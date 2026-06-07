@@ -5,10 +5,14 @@
 
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Users, CreditCard, BarChart2, ShieldAlert, Plus, TrendingUp, DollarSign, Award } from 'lucide-react';
+import { Users, CreditCard, BarChart2, ShieldAlert, Plus, TrendingUp, DollarSign, Award, LogOut } from 'lucide-react';
 import { FictionalUser } from '../types';
 
-export const AdminDashboard: React.FC = () => {
+interface AdminDashboardProps {
+  onLogout: () => void;
+}
+
+export const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout }) => {
   // Fictional initial users list
   const [users, setUsers] = useState<FictionalUser[]>([
     { id: '1', name: 'Beth Harmon', elo: 2450, subscription: 'Premium', joinedDate: '2026-05-12', puzzlesSolved: 312 },
@@ -51,11 +55,27 @@ export const AdminDashboard: React.FC = () => {
   const averageEloRating = Math.round(users.reduce((acc, u) => acc + u.elo, 0) / totalUsersCount);
 
   return (
-    <div className="w-full max-w-md mx-auto bg-slate-900 text-slate-100 p-5 pb-24 min-h-[calc(100vh-66px)]">
+    <div className="w-full max-w-md mx-auto bg-slate-900 text-slate-100 p-5 pb-10 min-h-screen">
       
+      {/* Admin Top Header Bar */}
+      <div className="flex justify-between items-center bg-slate-800/50 border border-slate-700/40 rounded-2xl p-3.5 mb-6 shadow-md">
+        <div className="flex items-center space-x-2.5">
+          <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+          <span className="text-xs font-mono font-bold uppercase tracking-wider text-slate-300">Live Admin</span>
+        </div>
+        <button
+          onClick={onLogout}
+          id="btn-admin-logout"
+          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 px-3 py-1.5 rounded-xl text-[11px] font-bold tracking-wide flex items-center space-x-1.5 transition-all cursor-pointer"
+        >
+          <LogOut size={12} />
+          <span>Cerrar Sesión</span>
+        </button>
+      </div>
+
       {/* Title */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-extrabold tracking-tight text-white">Panel de Administración</h1>
+      <div className="mb-6 px-1">
+        <h1 className="text-2xl font-extrabold tracking-tight text-white">Consola de Control</h1>
         <p className="text-xs text-slate-400 mt-1">Supervisión en tiempo real de métricas críticas y alumnos del MVP.</p>
       </div>
 
