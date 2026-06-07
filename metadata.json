@@ -1,0 +1,6 @@
+{
+  "name": "Entrenamiento de Tácticas de Ajedrez",
+  "description": "MVP de una Web App móvil gamificada para el entrenamiento de tácticas de ajedrez con UX inspirada en Duolingo.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
