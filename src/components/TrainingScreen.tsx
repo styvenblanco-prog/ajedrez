@@ -27,6 +27,10 @@ export const TrainingScreen: React.FC<TrainingScreenProps> = ({ puzzles, progres
   const [solvedState, setSolvedState] = useState<'solving' | 'correct' | 'incorrect' | 'fail_lives'>('solving');
   const [lastMove, setLastMove] = useState<{ from: { r: number; c: number }; to: { r: number; c: number } } | null>(null);
 
+  // Hint power-up state tracking
+  const [isHintRevealed, setIsHintRevealed] = useState(false);
+  const [showNoLivesModal, setShowNoLivesModal] = useState(false);
+
   // Initialize board for the current puzzle
   useEffect(() => {
     if (activePuzzle) {
@@ -38,6 +42,8 @@ export const TrainingScreen: React.FC<TrainingScreenProps> = ({ puzzles, progres
       setSelectedSquare(null);
       setSolvedState('solving');
       setLastMove(null);
+      setIsHintRevealed(false);
+      setShowNoLivesModal(false);
     }
   }, [activePuzzle, currentPuzzleIndex]);
 
@@ -150,6 +156,39 @@ export const TrainingScreen: React.FC<TrainingScreenProps> = ({ puzzles, progres
     setSelectedSquare(null);
   };
 
+  // Helper string parser to strip solution coordinates from public prompt descriptions
+  const getBaseInstruction = (instruction: string) => {
+    const parts = instruction.split('(');
+    return parts[0].trim();
+  };
+
+  const getClue = (instruction: string) => {
+    const parts = instruction.split('(');
+    if (parts.length > 1) {
+      return parts[1].replace(')', '').trim();
+    }
+    return "Analiza patrones geométricos como clavadas diagonales, jaques directos y desvíos tácticos del defensor.";
+  };
+
+  // Clue reveal action
+  const handleRevealHint = () => {
+    if (isHintRevealed) return;
+    
+    if (progress.lives <= 0) {
+      setShowNoLivesModal(true);
+      return;
+    }
+
+    // Deduct 1 life
+    onUpdateProgress((prev) => ({
+      ...prev,
+      lives: Math.max(0, prev.lives - 1),
+    }));
+
+    setIsHintRevealed(true);
+    sounds.playMove();
+  };
+
   // Get index labels for chessboard (a-h and 8-1)
   const cols = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
   const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
@@ -178,10 +217,11 @@ export const TrainingScreen: React.FC<TrainingScreenProps> = ({ puzzles, progres
       lives: 3,
     }));
     setSolvedState('solving');
+    setShowNoLivesModal(false);
   };
 
   return (
-    <div className="w-full max-w-md mx-auto bg-slate-900 text-slate-100 flex flex-col justify-between min-h-[calc(100vh-66px)] pb-24">
+    <div className="w-full max-w-md mx-auto bg-slate-900 text-slate-100 flex flex-col justify-between min-h-[calc(100vh-66px)] pb-24 relative">
       
       {/* Upper Status Header */}
       <div className="bg-slate-800/80 backdrop-blur-md sticky top-0 z-10 px-4 py-3 border-b border-slate-800/80 flex items-center justify-between">
@@ -237,10 +277,13 @@ export const TrainingScreen: React.FC<TrainingScreenProps> = ({ puzzles, progres
           <h2 className="text-lg font-bold text-white mt-2.5 leading-snug">
             {activePuzzle.title}
           </h2>
-          <p className="text-xs text-slate-300 mt-1.5 font-medium italic">
+          <p className="text-xs text-slate-300 mt-2 font-semibold">
+            {getBaseInstruction(activePuzzle.instruction)}
+          </p>
+          <p className="text-[11px] text-slate-400 mt-1 italic">
             "{activePuzzle.description}"
           </p>
-          <div className="flex items-center justify-center space-x-1.5 text-xs text-amber-400 font-bold font-mono mt-2">
+          <div className="flex items-center justify-center space-x-1.5 text-xs text-amber-400 font-bold font-mono mt-2.5">
             <span className="bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/10">🤖 Elo inicial: {activePuzzle.rating}</span>
           </div>
         </div>
@@ -330,11 +373,40 @@ export const TrainingScreen: React.FC<TrainingScreenProps> = ({ puzzles, progres
           )}
         </div>
 
-        {/* Dynamic Instructional Indicator */}
-        <div className="mt-4 flex items-center space-x-2 text-xs bg-slate-800/30 px-4 py-2.5 rounded-lg border border-slate-800/50 max-w-[360px] w-full text-center justify-center">
-          <HelpCircle size={14} className="text-emerald-400" />
-          <span className="text-slate-300 font-medium">{activePuzzle.instruction}</span>
+        {/* Dynamic Clue & Instruction Display */}
+        <div className="w-full max-w-[360px] mt-4 space-y-3">
+          {/* Hint power-up button */}
+          <button
+            onClick={handleRevealHint}
+            disabled={isHintRevealed}
+            id="btn-reveal-hint"
+            className={`w-full py-3.5 px-4 rounded-xl font-bold text-xs flex items-center justify-center space-x-2 transition-all duration-200 cursor-pointer border-2 ${
+              isHintRevealed
+                ? 'bg-slate-850 border-slate-800 text-slate-500 cursor-not-allowed'
+                : 'bg-slate-950 border-amber-500 hover:border-amber-400 text-amber-500 hover:bg-amber-500/5 active:scale-98 shadow-md shadow-amber-500/5'
+            }`}
+          >
+            <span>💡 {isHintRevealed ? 'Pista ya revelada' : 'Obtener Pista (-1 ❤️)'}</span>
+          </button>
+
+          {/* Golden animated box containing parsed clue if revealed */}
+          <AnimatePresence>
+            {isHintRevealed && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="bg-amber-500/10 border-2 border-amber-400/30 rounded-xl p-3 text-center flex flex-col items-center justify-center space-y-1"
+              >
+                <span className="text-[10px] font-black tracking-widest text-amber-400 uppercase">💡 Pista Táctica</span>
+                <p className="text-xs text-amber-200 font-semibold leading-relaxed">
+                  "{getClue(activePuzzle.instruction)}"
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
+
       </div>
 
       {/* Persistent Explanation card structure */}
@@ -343,6 +415,49 @@ export const TrainingScreen: React.FC<TrainingScreenProps> = ({ puzzles, progres
           * Para jugar, haz clic en la pieza blanca que quieres mover, y luego haz clic en la casilla objetivo.
         </p>
       </div>
+
+      {/* "Sin Vidas" Modal popup */}
+      <AnimatePresence>
+        {showNoLivesModal && (
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-50 p-6">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-slate-900 border-2 border-slate-800 rounded-3xl p-6 text-center max-w-sm w-full space-y-4 shadow-2xl"
+            >
+              <div className="w-12 h-12 bg-red-500/15 text-red-550 rounded-full flex items-center justify-center mx-auto border border-red-500/20">
+                <Heart size={24} className="fill-red-500 text-red-500" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-lg font-black text-white">Sin vidas restantes</h3>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Has agotado todas tus vidas. Espera a que se recarguen o consigue más corazones para seguir obteniendo valiosas pistas.
+                </p>
+              </div>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setShowNoLivesModal(false)}
+                  id="btn-close-no-lives"
+                  className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2.5 px-4 rounded-xl text-xs cursor-pointer"
+                >
+                  Cerrar
+                </button>
+                <button
+                  onClick={() => {
+                    handleRefillLives();
+                    setShowNoLivesModal(false);
+                  }}
+                  id="btn-refill-lives-modal"
+                  className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold py-2.5 px-4 rounded-xl text-xs cursor-pointer shadow-lg shadow-emerald-500/10"
+                >
+                  Cargar Vidas ❤️
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Slidable Feedback Overlay (Duolingo Style!) */}
       <AnimatePresence>
@@ -369,62 +484,76 @@ export const TrainingScreen: React.FC<TrainingScreenProps> = ({ puzzles, progres
                 <h3 className={`text-lg font-black tracking-tight ${
                   solvedState === 'correct' ? 'text-emerald-300' : 'text-red-300'
                 }`}>
-                  {solvedState === 'correct' ? '¡Excelente Trabajo!' : '¡Oops! Táctica Errónea'}
+                  {solvedState === 'correct' ? '¡Correcto! +10 XP 🎉' : 'Incorrecto. -1 ❤️ Intenta de nuevo'}
                 </h3>
                 
                 <p className="text-xs text-slate-200 font-medium leading-relaxed">
                   {solvedState === 'correct' 
                     ? `¡Resuelto con éxito! Has ganado +10 XP por descifrar la posición y castigar al oponente. Continuemos acumulando gemas de conocimiento.` 
-                    : `No es el movimiento decisivo. Recuerda repasar siempre los resguardos y desvíos geométricos en ajedrez clásico.`}
+                    : `No es el movimiento decisivo. Mantén tu concentración y busca otros patrones tácticos de ataque/defensa.`}
                 </p>
 
-                {/* Technical / Educational solution explanation */}
-                <div className="bg-slate-900/40 p-2.5 rounded-lg border border-slate-800/40 mt-3 text-left">
-                  <p className="text-[10px] text-slate-400 font-mono uppercase tracking-wider font-bold">Respuesta Técnica:</p>
-                  <p className="text-[11px] text-slate-200 mt-1">
-                    <span className="font-bold text-amber-400 mr-1.5">{activePuzzle.movesText}</span>
-                    {activePuzzle.solutionExplanation}
-                  </p>
-                </div>
+                {/* Technical / Educational solution explanation - ONLY shown on correct state! */}
+                {solvedState === 'correct' && (
+                  <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800/40 mt-3 text-left animate-fade-in">
+                    <p className="text-[10px] text-slate-400 font-mono uppercase tracking-wider font-bold">Respuesta Técnica:</p>
+                    <p className="text-[11.5px] text-slate-200 mt-1">
+                      <span className="font-bold text-amber-400 mr-2">{activePuzzle.movesText}</span>
+                      {activePuzzle.solutionExplanation}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Bottom Actions inside the Slide Overlay */}
             <div className="flex space-x-3 mt-5">
               {solvedState === 'incorrect' && progress.lives > 0 && (
-                <button
-                  onClick={handleRetryPuzzle}
-                  id="btn-retry-puzzle"
-                  className="flex-1 border-2 border-slate-700 bg-slate-800 hover:bg-slate-755 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center space-x-1.5 text-xs transition duration-150 cursor-pointer"
-                >
-                  <RefreshCw size={14} />
-                  <span>Reintentar</span>
-                </button>
+                <>
+                  <button
+                    onClick={handleRetryPuzzle}
+                    id="btn-retry-puzzle"
+                    className="flex-1 border-2 border-slate-705 bg-slate-800 hover:bg-slate-755 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center space-x-1.5 text-xs transition duration-150 cursor-pointer"
+                  >
+                    <RefreshCw size={14} />
+                    <span>Intentar de nuevo</span>
+                  </button>
+
+                  {!isHintRevealed && (
+                    <button
+                      onClick={() => {
+                        handleRevealHint();
+                        handleRetryPuzzle();
+                      }}
+                      id="btn-reveal-hint-incorrect"
+                      className="flex-1 border-2 border-amber-500/50 bg-slate-950 text-amber-400 font-bold py-3 px-4 rounded-xl flex items-center justify-center space-x-1.5 text-xs transition duration-150 cursor-pointer hover:bg-amber-500/5"
+                    >
+                      <span>Obtener Pista (-1 ❤️)</span>
+                    </button>
+                  )}
+                </>
               )}
 
               {solvedState === 'incorrect' && progress.lives === 0 && (
                 <button
                   onClick={handleRefillLives}
                   id="btn-refill-lives-action"
-                  className="flex-1 bg-red-600 hover:bg-red-550 active:bg-red-700 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center space-x-1.5 text-xs transition duration-150 cursor-pointer"
+                  className="flex-1 bg-red-650 hover:bg-red-550 active:bg-red-700 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center space-x-1.5 text-xs transition duration-150 cursor-pointer"
                 >
                   <Heart size={14} className="fill-white" />
                   <span>Recargar Vidas</span>
                 </button>
               )}
 
-              <button
-                onClick={handleNextPuzzle}
-                id="btn-next-puzzle"
-                className={`flex-1 font-black py-3.5 px-4 rounded-xl flex items-center justify-center space-x-1.5 text-xs transition duration-150 cursor-pointer shadow-md ${
-                  solvedState === 'correct'
-                    ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/10'
-                    : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700'
-                }`}
-              >
-                <span>Siguiente Táctica</span>
-                <ArrowRight size={14} />
-              </button>
+              {solvedState === 'correct' && (
+                <button
+                  onClick={handleNextPuzzle}
+                  id="btn-next-puzzle"
+                  className="flex-1 font-black py-3.5 px-4 rounded-xl flex items-center justify-center space-x-1.5 text-xs transition duration-150 cursor-pointer shadow-md bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/10"
+                >
+                  <span>Siguiente Problema →</span>
+                </button>
+              )}
             </div>
           </motion.div>
         )}
@@ -433,3 +562,4 @@ export const TrainingScreen: React.FC<TrainingScreenProps> = ({ puzzles, progres
   );
 };
 export default TrainingScreen;
+
