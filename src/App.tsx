@@ -8,6 +8,7 @@ import { OnboardingWizard } from './components/OnboardingWizard';
 import { TrainingScreen } from './components/TrainingScreen';
 import { ProgressDashboard } from './components/ProgressDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
+import { AdminLoginModal } from './components/AdminLoginModal';
 import { CHESS_PUZZLES } from './data/puzzles';
 import { UserProgress } from './types';
 import { Swords, Award, Users, ShieldAlert, Sparkles } from 'lucide-react';
@@ -47,8 +48,14 @@ export default function App() {
     return localStorage.getItem('chess_tactics_onboarded') === 'true';
   });
 
+  // Admin routing state
+  const [isAdmin, setIsAdmin] = useState<boolean>(() => {
+    return localStorage.getItem('chess_tactics_admin_active') === 'true';
+  });
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState<boolean>(false);
+
   // Current selected view tab
-  const [currentTab, setCurrentTab] = useState<'train' | 'progress' | 'admin'>('train');
+  const [currentTab, setCurrentTab] = useState<'train' | 'progress'>('train');
 
   // Sync state changes to localStorage
   useEffect(() => {
@@ -80,6 +87,33 @@ export default function App() {
   const handleUpdateProgress = (updater: (prev: UserProgress) => UserProgress) => {
     setProgress((prev) => updater(prev));
   };
+
+  // Admin Screen Render
+  if (isAdmin) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-0 md:p-6 font-sans">
+        {/* Sleek mobile mockup wrapper on desktop sizing */}
+        <div className="w-full max-w-md md:rounded-[40px] md:border-[10px] md:border-slate-800 bg-slate-900 md:shadow-2xl md:ring-1 md:ring-slate-700/50 overflow-hidden relative min-h-screen md:min-h-[820px] flex flex-col justify-between">
+          
+          {/* Top bar mockup */}
+          <div className="hidden md:flex justify-between items-center px-8 py-2 bg-slate-950 text-[10px] font-mono text-slate-500 z-10 select-none">
+            <span>Admin Console</span>
+            <div className="w-20 h-3 bg-slate-900 rounded-full mx-auto" />
+            <span>SECURE 🔒</span>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            <AdminDashboard
+              onLogout={() => {
+                setIsAdmin(false);
+                localStorage.removeItem('chess_tactics_admin_active');
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Onboarding Screen Render
   if (!isOnboarded) {
@@ -127,11 +161,8 @@ export default function App() {
             <ProgressDashboard 
               progress={progress} 
               onResetProgress={handleResetProgress}
+              onAdminLoginClick={() => setIsAdminModalOpen(true)}
             />
-          )}
-
-          {currentTab === 'admin' && (
-            <AdminDashboard />
           )}
         </div>
 
@@ -179,24 +210,18 @@ export default function App() {
               <div className="absolute top-0 w-8 h-1 bg-amber-400 rounded-full" />
             )}
           </button>
-
-          {/* Admin Tab */}
-          <button
-            onClick={() => setCurrentTab('admin')}
-            id="tab-btn-admin"
-            className={`flex-1 flex flex-col items-center justify-center py-2 rounded-xl transition-all relative cursor-pointer ${
-              currentTab === 'admin' 
-                ? 'text-cyan-400 font-extrabold' 
-                : 'text-slate-500 hover:text-slate-300'
-            }`}
-          >
-            <Users size={20} className={currentTab === 'admin' ? 'scale-110 text-cyan-400 filter drop-shadow-[0_0_3px_rgba(34,211,238,0.3)]' : ''} />
-            <span className="text-[10px] tracking-wide mt-1 uppercase font-black">Admin</span>
-            {currentTab === 'admin' && (
-              <div className="absolute top-0 w-8 h-1 bg-cyan-400 rounded-full" />
-            )}
-          </button>
         </div>
+
+        {/* Security Login Modal popup */}
+        <AdminLoginModal
+          isOpen={isAdminModalOpen}
+          onClose={() => setIsAdminModalOpen(false)}
+          onLoginSuccess={() => {
+            setIsAdmin(true);
+            localStorage.setItem('chess_tactics_admin_active', 'true');
+            setIsAdminModalOpen(false);
+          }}
+        />
 
       </div>
 
