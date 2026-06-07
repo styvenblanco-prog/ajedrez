@@ -11,9 +11,10 @@ import { UserProgress } from '../types';
 interface ProgressDashboardProps {
   progress: UserProgress;
   onResetProgress: () => void;
+  onAdminLoginClick: () => void;
 }
 
-export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ progress, onResetProgress }) => {
+export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ progress, onResetProgress, onAdminLoginClick }) => {
   // Level definitions
   const getLevelTitle = (level: number) => {
     if (level < 3) return 'Novato del Tablero';
@@ -161,6 +162,17 @@ export const ProgressDashboard: React.FC<ProgressDashboardProps> = ({ progress, 
           className="text-xs text-red-400 font-bold hover:text-red-300 border border-red-500/20 bg-red-500/5 hover:bg-red-500/10 transition-all px-3 py-1.5 rounded-lg cursor-pointer"
         >
           Reiniciar
+        </button>
+      </div>
+
+      {/* Admin entry point - Small, discrete and unnoticeable */}
+      <div className="mt-8 flex justify-center pb-2">
+        <button
+          onClick={onAdminLoginClick}
+          id="btn-admin-access-discreet"
+          className="text-[10px] text-slate-600 hover:text-slate-400 font-semibold uppercase tracking-wider transition-all cursor-pointer bg-transparent border-none p-2"
+        >
+          Acceso Admin
         </button>
       </div>
 
